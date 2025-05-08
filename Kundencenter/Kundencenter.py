@@ -167,7 +167,7 @@ def run_streamlit_app(api_client):
 
         #if (current_time > update_time):
         #    st.rerun()
-
+        first = False
         time.sleep(1)
 
 # Example usage:
