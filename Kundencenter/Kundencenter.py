@@ -85,7 +85,6 @@ def make_grid(cols,rows):
 # Streamlit Web App
 def run_streamlit_app(api_client):
 
-    first = True
 
     st.set_page_config(layout="wide")
     st.title("Kundencenter Dashboard")
@@ -141,8 +140,7 @@ def run_streamlit_app(api_client):
                                 label=f"{sensor_name[sensor_id]}",
                                 value=f"{live_power} W",
                             )
-                            if first:
-                                st.plotly_chart(fig)#, key=f"{sensor_name[sensor_id]+random.randint(0, 100)}")
+                            st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
                             
                     elif col_index == 1:
                         with col2:
@@ -150,16 +148,15 @@ def run_streamlit_app(api_client):
                                 label=f"{sensor_name[sensor_id]}",
                                 value=f"{live_power} W",
                             )
-                            if first:
-                                st.plotly_chart(fig)#, key=f"{sensor_name[sensor_id]+random.randint(0, 100)}")
+                            st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
+
                     elif col_index == 2:
                         with col3:
                             st.metric(
                                 label=f"{sensor_name[sensor_id]}",
                                 value=f"{live_power} W",
                             )
-                            if first:
-                                st.plotly_chart(fig)#, key=f"{sensor_name[sensor_id]+random.randint(0, 100)}")
+                            st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
                    
 
                 except requests.exceptions.RequestException as e:
@@ -167,8 +164,7 @@ def run_streamlit_app(api_client):
 
         #if (current_time > update_time):
         #    st.rerun()
-        first = False
-        time.sleep(1)
+        time.sleep(10)
 
 # Example usage:
 if __name__ == "__main__":
