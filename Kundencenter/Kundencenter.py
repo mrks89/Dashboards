@@ -1,8 +1,6 @@
 import requests
 import time
 import streamlit as st
-from threading import Thread
-import matplotlib.pyplot as plt
 import plotly.express as px
 import random
 import datetime
