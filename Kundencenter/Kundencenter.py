@@ -85,6 +85,7 @@ def make_grid(cols,rows):
 # Streamlit Web App
 def run_streamlit_app(api_client):
 
+    st.logo("logo.png")
 
     st.set_page_config(layout="wide")
     st.title("Kundencenter Dashboard")
