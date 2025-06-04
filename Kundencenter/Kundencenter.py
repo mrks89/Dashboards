@@ -5,7 +5,34 @@ import plotly.express as px
 import random
 import datetime
 
-# TODO add variable date
+from collections import Counter, defaultdict
+
+def get_most_important_keys(disagg_dicts, top_n=5):
+    """
+    Returns the most common keys, the keys with the highest summed values, and all unique categories.
+    
+    Args:
+        disagg_dicts (list): List of disaggregation dictionaries.
+        top_n (int): Number of top keys to return.
+        
+    Returns:
+        (list, list, list): (most_common_keys, highest_sum_keys, all_categories)
+    """
+    key_counter = Counter()
+    value_sums = defaultdict(float)
+    all_categories = set()
+    
+    for d in disagg_dicts:
+        key_counter.update(d.keys())
+        for k, v in d.items():
+            value_sums[k] += v
+            all_categories.add(k)
+    
+    most_common_keys = [k for k, _ in key_counter.most_common(top_n)]
+    highest_sum_keys = sorted(value_sums, key=value_sums.get, reverse=True)[:top_n]
+    all_categories = sorted(all_categories)
+    
+    return most_common_keys, highest_sum_keys, all_categories
 
 class APIClient:
     BASE_URL = "https://smart-meter-reseller-api.voltaware.com"
@@ -59,7 +86,7 @@ class APIClient:
 
     def get_disaggregation_results(self, sensor_id, date):
         """Retrieve disaggregation results for a sensor on a specific date."""
-        url = f"https://reseller-api.voltaware.com/sensors/{sensor_id}/disag/day?date=2025-05-04"
+        url = f"https://reseller-api.voltaware.com/sensors/{sensor_id}/disag/day?date={date}"
         
         headers = {"Authorization": f"Bearer {self.get_access_token()}"}
         response = requests.get(url, headers=headers)
@@ -82,84 +109,109 @@ def make_grid(cols,rows):
             grid[i] = st.columns(rows)
     return grid
 
+def get_all_disaggregation_keys(sensors):
+    """
+    Returns a sorted list of all unique keys found in the 'disaggregation' dicts of the sensors variable.
+    """
+    all_keys = set()
+    for sensor in sensors.values():
+        all_keys.update(sensor.get("disaggregation", {}).keys())
+    return sorted(all_keys)
+
 # Streamlit Web App
 def run_streamlit_app(api_client):
 
-    st.set_page_config(layout="wide")
-    st.title("Kundencenter Dashboard")
+    # Todo: kW statt W
+    # Legende vereinheitlichen
+    # Größe checken
 
-    sensor_ids = ["21820", "21189", "22097","21821","21822"]
+    st.set_page_config(layout="wide")
+    st.title("BE-Kundencenter Dashboard")
 
     update_time = datetime.datetime.strptime("8:00", "%H:%M").time()
 
-    sensor_name = {
-        "21820": "Mattersburg",
-        "21189": "Eisenstadt",
-        "22097": "Jennersdorf",
-        "21821": "Oberwart",
-        "21822": "Oberpullendorf"
+    sensors = {
+        "21820":{"disaggregation":{}, "name":"Mattersburg"},
+        "21189":{"disaggregation":{}, "name":"Eisenstadt"},
+        "22097":{"disaggregation":{}, "name":"Jennersdorf"},
+        "21821":{"disaggregation":{}, "name":"Oberwart"},
+        "21822":{"disaggregation":{}, "name":"Oberpullendorf"},
+        "22096":{"disaggregation":{}, "name":"Güssing"},
     }
+
+    dis = []
 
     placeholder = st.empty()
     # Create two columns for the layout
-    grid = make_grid(3,2)
+    grid = make_grid(3,3)
 
     while True:
         current_time = datetime.datetime.now().time()
+
+        yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+
+        for i, sensor_id in enumerate(sensors):
+            try:
+                # Fetch disaggregation results for the sensor
+                data = api_client.get_disaggregation_results(sensor_id, yesterday)
+                sensors[sensor_id]["disaggregation"] = data.get("consumption", {})
+                dis.append(sensors[sensor_id]["disaggregation"])
+            except requests.exceptions.RequestException as e:
+                    st.error(f"Error fetching data for sensor {sensors[sensor_id]["name"]}: {e}")
+        all_keys = get_all_disaggregation_keys(sensors)
+        for sensor in sensors.values():
+            for key in all_keys:
+                if key not in sensor["disaggregation"]:
+                    sensor["disaggregation"][key] = 0
+        #import pdb; pdb.set_trace()
         with placeholder.container():
             # create three columns
             col1, col2, col3 = st.columns(3)
 
             # Fetch and display results for each sensor
-            for i, sensor_id in enumerate(sensor_ids):
-                try:
-                    # Fetch disaggregation results for the sensor
-                    data = api_client.get_disaggregation_results(sensor_id, "2025-05-04")
-                    consumption = data.get("consumption", {})
-                    consumption_labels = list(consumption.keys())
-                    consumption_values = list(consumption.values())
+            for i, sensor_id in enumerate(sensors):
+                consumption = sensors[sensor_id]["disaggregation"]
+                consumption_labels = list(consumption.keys())
+                consumption_values = list(consumption.values())
 
-                    data_live = api_client.get_live_power(sensor_id)
-                    live_power = data_live.get("consumption", {}).get("actualRaw", 0)
+                data_live = api_client.get_live_power(sensor_id)
+                live_power = data_live.get("consumption", {}).get("actualRaw", 0)/1000 # Convert from W to kW
 
-                    # Create the pie chart using Plotly
-                    fig = px.pie(
-                        values=consumption_values,
-                        names=consumption_labels,
-                        #title=f"{sensor_name[sensor_id]} - Live Power: {live_power} W",
-                        hole=0.4  # Optional: Makes it a donut chart
-                    )
+                # Create the pie chart using Plotly
+                fig = px.pie(
+                    values=consumption_values,
+                    names=consumption_labels,
+                    #title=f"{sensor_name[sensor_id]} - Live Power: {live_power} W",
+                    hole=0.4  # Optional: Makes it a donut chart
+                )
 
-                    # Determine the column and row index
-                    col_index = i % 3  # Column index (0, 1, or 2)
-                    #row_index = i // 3  # Row index (0 or 1)
-                    if col_index == 0:                        
-                        with col1:
-                            st.metric(
-                                label=f"{sensor_name[sensor_id]}",
-                                value=f"{live_power} W",
-                            )
-                            st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
-                            
-                    elif col_index == 1:
-                        with col2:
-                            st.metric(
-                                label=f"{sensor_name[sensor_id]}",
-                                value=f"{live_power} W",
-                            )
-                            st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
+                # Determine the column and row index
+                col_index = i % 3  # Column index (0, 1, or 2)
+                #row_index = i // 3  # Row index (0 or 1)
+                if col_index == 0:                        
+                    with col1:
+                        st.metric(
+                            label=f"{sensors[sensor_id]["name"]}",
+                            value=f"{live_power:.2f} kW",
+                        )
+                        st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
+                        
+                elif col_index == 1:
+                    with col2:
+                        st.metric(
+                            label=f"{sensors[sensor_id]["name"]}",
+                            value=f"{live_power:.2f} kW",
+                        )
+                        st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
 
-                    elif col_index == 2:
-                        with col3:
-                            st.metric(
-                                label=f"{sensor_name[sensor_id]}",
-                                value=f"{live_power} W",
-                            )
-                            st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
+                elif col_index == 2:
+                    with col3:
+                        st.metric(
+                            label=f"{sensors[sensor_id]["name"]}",
+                            value=f"{live_power:.2f} kW",
+                        )
+                        st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
                    
-
-                except requests.exceptions.RequestException as e:
-                    st.error(f"Error fetching data for sensor {sensor_id}: {e}")
 
         #if (current_time > update_time):
         #    st.rerun()
