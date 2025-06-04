@@ -132,6 +132,22 @@ def run_streamlit_app(api_client):
     st.set_page_config(layout="wide")
     st.title("BE-Kundencenter Dashboard")
 
+    # Reduce/remove top padding
+    st.markdown(
+        """
+        <style>
+            .block-container {
+                padding-top: 1rem !important;
+            }
+            header[data-testid="stHeader"] {
+                height: 0px;
+                min-height: 0px;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     update_time = datetime.datetime.strptime("8:00", "%H:%M").time()
 
     sensors = {
@@ -182,15 +198,7 @@ def run_streamlit_app(api_client):
 
         with placeholder.container():
                     # Draw custom legend in a single row using all_keys and color_map
-            legend_html = ""
-            for key in all_keys:
-                color = color_map[key]
-                legend_html += (
-                    f'<span style="display:inline-block;width:16px;height:16px;background-color:{color};'
-                    f'margin-right:8px;border-radius:3px;vertical-align:middle;"></span>'
-                    f'<span style="margin-right:18px;vertical-align:middle;">{key}</span>'
-                )
-            st.markdown(legend_html, unsafe_allow_html=True)
+            
 
             # create three columns
             col1, col2, col3 = st.columns(3)
@@ -215,8 +223,8 @@ def run_streamlit_app(api_client):
                 fig.update_layout(showlegend=False)
                 # Set smaller margins and chart size
                 fig.update_layout(
-                    margin=dict(l=0, r=0, t=0, b=0),  # left, right, top, bottom
-                    height=220,  # adjust as needed
+                    margin=dict(l=0, r=0, t=10, b=10),  # left, right, top, bottom
+                    height=250,  # adjust as needed
                 )
 
                 col_index = i % 3
@@ -241,6 +249,16 @@ def run_streamlit_app(api_client):
                             value=f"{live_power:.2f} kW",
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
+            
+            legend_html = ""
+            for key in all_keys:
+                color = color_map[key]
+                legend_html += (
+                    f'<span style="display:inline-block;width:16px;height:16px;background-color:{color};'
+                    f'margin-right:8px;border-radius:3px;vertical-align:middle;"></span>'
+                    f'<span style="margin-right:18px;vertical-align:middle;">{key}</span>'
+                )
+            st.markdown(legend_html, unsafe_allow_html=True)
                    
 
         #if (current_time > update_time):
