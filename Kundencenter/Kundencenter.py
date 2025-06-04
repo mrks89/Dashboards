@@ -159,6 +159,18 @@ def run_streamlit_app(api_client):
         "22096":{"disaggregation":{}, "name":"Güssing"},
     }
 
+    predefined_labels = {
+        "air_conditioner": "Klimaanlage",
+        "cooking": "Kochen",
+        "fridge_freezer": "Kühlschrank/Gefriertruhe",
+        "heating": "Heizung",
+        "kettle": "Wasserkocher",
+        "lighting_entertainment": "Licht/Unterhaltung",
+        "standby": "Standby",
+        "others": "Andere",
+        # Add more mappings as needed
+    }
+
     dis = []
 
     placeholder = st.empty()
@@ -253,10 +265,11 @@ def run_streamlit_app(api_client):
             legend_html = ""
             for key in all_keys:
                 color = color_map[key]
+                label = predefined_labels.get(key, key)
                 legend_html += (
                     f'<span style="display:inline-block;width:16px;height:16px;background-color:{color};'
                     f'margin-right:8px;border-radius:3px;vertical-align:middle;"></span>'
-                    f'<span style="margin-right:18px;vertical-align:middle;">{key}</span>'
+                    f'<span style="margin-right:18px;vertical-align:middle;">{label}</span>'
                 )
             st.markdown(legend_html, unsafe_allow_html=True)
                    
