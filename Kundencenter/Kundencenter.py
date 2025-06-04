@@ -148,15 +148,16 @@ def run_streamlit_app(api_client):
         unsafe_allow_html=True
     )
 
+
     update_time = datetime.datetime.strptime("8:00", "%H:%M").time()
 
     sensors = {
-        "21820":{"disaggregation":{}, "name":"Mattersburg"},
-        "21189":{"disaggregation":{}, "name":"Eisenstadt"},
-        "22097":{"disaggregation":{}, "name":"Jennersdorf"},
-        "21821":{"disaggregation":{}, "name":"Oberwart"},
-        "21822":{"disaggregation":{}, "name":"Oberpullendorf"},
-        "22096":{"disaggregation":{}, "name":"Güssing"},
+        "21820":{"disaggregation":{}, "prev_val": 0, "name":"Mattersburg"},
+        "21189":{"disaggregation":{}, "prev_val": 0, "name":"Eisenstadt"},
+        "22097":{"disaggregation":{}, "prev_val": 0, "name":"Jennersdorf"},
+        "21821":{"disaggregation":{}, "prev_val": 0, "name":"Oberwart"},
+        "21822":{"disaggregation":{}, "prev_val": 0, "name":"Oberpullendorf"},
+        "22096":{"disaggregation":{}, "prev_val": 0, "name":"Güssing"},
     }
 
     predefined_labels = {
@@ -168,6 +169,7 @@ def run_streamlit_app(api_client):
         "lighting_entertainment": "Licht/Unterhaltung",
         "standby": "Standby",
         "others": "Andere",
+        "boiler": "Boiler"
         # Add more mappings as needed
     }
 
@@ -180,7 +182,7 @@ def run_streamlit_app(api_client):
     while True:
         current_time = datetime.datetime.now().time()
 
-        yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+        yesterday = (datetime.datetime.now() - datetime.timedelta(days=10)).strftime("%Y-%m-%d")
 
         for i, sensor_id in enumerate(sensors):
             try:
@@ -202,11 +204,6 @@ def run_streamlit_app(api_client):
         ]
         color_map = {key: palette[i % len(palette)] for i, key in enumerate(all_keys)}
 
-        # Ensure all disaggregation dicts have all keys, fill missing with 0
-        for sensor in sensors.values():
-            for key in all_keys:
-                if key not in sensor["disaggregation"]:
-                    sensor["disaggregation"][key] = 0
 
         with placeholder.container():
                     # Draw custom legend in a single row using all_keys and color_map
@@ -223,7 +220,8 @@ def run_streamlit_app(api_client):
 
                 data_live = api_client.get_live_power(sensor_id)
                 live_power = data_live.get("consumption", {}).get("actualRaw", 0)/1000 # Convert from W to kW
-
+                delta = sensors[sensor_id]["prev_val"] - live_power
+                sensors[sensor_id]["prev_val"] = live_power
                 # Create the pie chart using Plotly with color mapping and no legend
                 fig = px.pie(
                     values=consumption_values,
@@ -233,9 +231,10 @@ def run_streamlit_app(api_client):
                     hole=0.4
                 )
                 fig.update_layout(showlegend=False)
+                fig.update_traces(textposition="inside")
                 # Set smaller margins and chart size
                 fig.update_layout(
-                    margin=dict(l=0, r=0, t=10, b=10),  # left, right, top, bottom
+                    margin=dict(l=0, r=0, t=0, b=0),  # left, right, top, bottom
                     height=250,  # adjust as needed
                 )
 
@@ -245,6 +244,8 @@ def run_streamlit_app(api_client):
                         st.metric(
                             label=f"{sensors[sensor_id]['name']}",
                             value=f"{live_power:.2f} kW",
+                            delta=f"{delta:.2f} kW",
+                            delta_color="inverse" 
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
                 elif col_index == 1:
@@ -252,6 +253,8 @@ def run_streamlit_app(api_client):
                         st.metric(
                             label=f"{sensors[sensor_id]['name']}",
                             value=f"{live_power:.2f} kW",
+                            delta=f"{delta:.2f} kW",
+                            delta_color="inverse"
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
                 elif col_index == 2:
@@ -259,6 +262,8 @@ def run_streamlit_app(api_client):
                         st.metric(
                             label=f"{sensors[sensor_id]['name']}",
                             value=f"{live_power:.2f} kW",
+                            delta=f"{delta:.2f} kW",
+                            delta_color="inverse"
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
             
@@ -266,11 +271,13 @@ def run_streamlit_app(api_client):
             for key in all_keys:
                 color = color_map[key]
                 label = predefined_labels.get(key, key)
+                
                 legend_html += (
                     f'<span style="display:inline-block;width:16px;height:16px;background-color:{color};'
                     f'margin-right:8px;border-radius:3px;vertical-align:middle;"></span>'
                     f'<span style="margin-right:18px;vertical-align:middle;">{label}</span>'
                 )
+            st.markdown("<div style='height:40px;'></div>", unsafe_allow_html=True)
             st.markdown(legend_html, unsafe_allow_html=True)
                    
 
