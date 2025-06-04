@@ -109,17 +109,21 @@ def make_grid(cols,rows):
             grid[i] = st.columns(rows)
     return grid
 
-def get_all_disaggregation_keys(sensors):
+def get_all_disaggregation_keys_sorted_by_sum(sensors):
     """
-    Returns a sorted list of all unique keys found in the 'disaggregation' dicts of the sensors variable.
+    Returns a list of all unique keys found in the 'disaggregation' dicts of the sensors variable,
+    sorted by their summed values (highest first).
     """
-    all_keys = set()
+    value_sums = defaultdict(float)
     for sensor in sensors.values():
-        all_keys.update(sensor.get("disaggregation", {}).keys())
-    return sorted(all_keys)
+        for k, v in sensor.get("disaggregation", {}).items():
+            value_sums[k] += v
+    return [k for k, _ in sorted(value_sums.items(), key=lambda item: item[1], reverse=True)]
 
 # Streamlit Web App
 def run_streamlit_app(api_client):
+
+    import plotly.colors
 
     # Todo: kW statt W
     # Legende vereinheitlichen
@@ -158,13 +162,36 @@ def run_streamlit_app(api_client):
                 dis.append(sensors[sensor_id]["disaggregation"])
             except requests.exceptions.RequestException as e:
                     st.error(f"Error fetching data for sensor {sensors[sensor_id]["name"]}: {e}")
-        all_keys = get_all_disaggregation_keys(sensors)
+
+        all_keys = get_all_disaggregation_keys_sorted_by_sum(sensors)
+
+        # Assign a color to each key using Plotly's qualitative palette
+        palette = [
+            "#636EFA", "#00CC96", "#AB63FA", "#FFA15A",
+            "#19D3F3", "#FF6692", "#B6E880", "#FF97FF", "#FECB52",
+            "#1F77B4", "#FF7F0E", "#2CA02C", "#D62728", "#9467BD",
+            "#8C564B", "#E377C2", "#7F7F7F", "#BCBD22", "#17BECF"
+        ]
+        color_map = {key: palette[i % len(palette)] for i, key in enumerate(all_keys)}
+
+        # Ensure all disaggregation dicts have all keys, fill missing with 0
         for sensor in sensors.values():
             for key in all_keys:
                 if key not in sensor["disaggregation"]:
                     sensor["disaggregation"][key] = 0
-        #import pdb; pdb.set_trace()
+
         with placeholder.container():
+                    # Draw custom legend in a single row using all_keys and color_map
+            legend_html = ""
+            for key in all_keys:
+                color = color_map[key]
+                legend_html += (
+                    f'<span style="display:inline-block;width:16px;height:16px;background-color:{color};'
+                    f'margin-right:8px;border-radius:3px;vertical-align:middle;"></span>'
+                    f'<span style="margin-right:18px;vertical-align:middle;">{key}</span>'
+                )
+            st.markdown(legend_html, unsafe_allow_html=True)
+
             # create three columns
             col1, col2, col3 = st.columns(3)
 
@@ -177,37 +204,40 @@ def run_streamlit_app(api_client):
                 data_live = api_client.get_live_power(sensor_id)
                 live_power = data_live.get("consumption", {}).get("actualRaw", 0)/1000 # Convert from W to kW
 
-                # Create the pie chart using Plotly
+                # Create the pie chart using Plotly with color mapping and no legend
                 fig = px.pie(
                     values=consumption_values,
                     names=consumption_labels,
-                    #title=f"{sensor_name[sensor_id]} - Live Power: {live_power} W",
-                    hole=0.4  # Optional: Makes it a donut chart
+                    color=consumption_labels,
+                    color_discrete_map=color_map,
+                    hole=0.4
+                )
+                fig.update_layout(showlegend=False)
+                # Set smaller margins and chart size
+                fig.update_layout(
+                    margin=dict(l=0, r=0, t=0, b=0),  # left, right, top, bottom
+                    height=220,  # adjust as needed
                 )
 
-                # Determine the column and row index
-                col_index = i % 3  # Column index (0, 1, or 2)
-                #row_index = i // 3  # Row index (0 or 1)
-                if col_index == 0:                        
+                col_index = i % 3
+                if col_index == 0:
                     with col1:
                         st.metric(
-                            label=f"{sensors[sensor_id]["name"]}",
+                            label=f"{sensors[sensor_id]['name']}",
                             value=f"{live_power:.2f} kW",
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
-                        
                 elif col_index == 1:
                     with col2:
                         st.metric(
-                            label=f"{sensors[sensor_id]["name"]}",
+                            label=f"{sensors[sensor_id]['name']}",
                             value=f"{live_power:.2f} kW",
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
-
                 elif col_index == 2:
                     with col3:
                         st.metric(
-                            label=f"{sensors[sensor_id]["name"]}",
+                            label=f"{sensors[sensor_id]['name']}",
                             value=f"{live_power:.2f} kW",
                         )
                         st.plotly_chart(fig, key=f"{time.time()+random.randint(0, 100)}")
