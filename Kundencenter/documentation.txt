@@ -1,0 +1,40 @@
+Settings:
+- Zeitraum
+- Kundencenterdaten
+
+Berechnete werte:
+- XGesamtverbrauch über Zeitraum
+- Xtäglicher Durchschnitt über Zeitraum
+- Xniedrigster Verbrauch in Zeitraum
+- XLive Gesamtverbrauch
+- XDifferenz Vergleichszeitraum
+- XLive Verbrauch pro KC
+- XVerbrauch gesamt Zeitraum pro KC
+- XDurschnitt täglich pro KC
+- XTages max und min pro KC 
+
+
+
+
+KC
+- Tagesverbräuche für Zeitraum
+- Metrics für Zeitraum
+- Live Wert für KC
+- Tagesverbrauch für VorZeitraum
+- Metrics für Vorzeitraum
+
+Gesamt
+- Summe Live über KC
+- MinMax und Durchschnitt
+- Summe Gesamt über Zeitraum
+
+
+
+
+function KcVerbrauchLive(KC_id) return Live-werte
+
+function Summe(Verbrauchsliste) return Summe
+
+function Durchschnitt(Verbrauchsliste) return Durchschnitt
+
+function MaxMin(Verbrauchsliste) return MaxMin
