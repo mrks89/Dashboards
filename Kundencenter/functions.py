@@ -1,5 +1,6 @@
 import requests
 from typing import Dict, List, Tuple
+import time
 
 class APIClient:
     BASE_URL = "https://smart-meter-reseller-api.voltaware.com"
@@ -63,28 +64,40 @@ class APIClient:
     def get_live_power(self, sensor_id):
         """Retrieve live power data for a sensor."""
         url = f"https://reseller-api.voltaware.com/sensors/{sensor_id}/stats/live"
-        
+        if not self.access_token:
+            self.authenticate()
         headers = {"Authorization": f"Bearer {self.get_access_token()}"}
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        return response.json()
+        live_power = response.json()
+        
+        # Extract consumption actualRaw value from nested structure
+        consumption_raw = live_power.get("consumption", {}).get("actualRaw", 0)
+        return consumption_raw
     
     def usage_per_day(self, sensor_id, start_date, end_date):
         """Retrieve consumption data for a specific period.
         Returns a list of dicts with 'date' and 'consumption' entries from dailyMetrics.
         """
-        url = f"https://reseller-api.voltaware.com/sensors/{sensor_id}/stats/consumption?start={start_date}&end={end_date}"
+        url = f"https://reseller-api.voltaware.com/sensors/{sensor_id}/stats/period?from={start_date}&to={end_date}"
+        
+        if not self.access_token:
+            self.authenticate() # Ensure we have an access token before making the request
         headers = {"Authorization": f"Bearer {self.get_access_token()}"}
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
+        
         # Use 'dailyMetrics' from the response
         result = []
         for entry in data.get("dailyMetrics", []):
+            
             result.append({
                 "date": entry.get("date"),
                 "consumption": entry.get("consumption")
             })
+        print("ok1 -> ", result)
+        return result
 
 def get_day_with_max_consumption(daily_data):
     """Returns the entry (dict) with the maximum consumption."""
@@ -109,9 +122,8 @@ def get_sum_consumption(daily_data):
     """Returns the sum of consumption over all days."""
     if not daily_data:
         return 0
-    return sum(x.get("consumption", 0) for x in in daily_data)
-    
+    return sum(x.get("consumption", 0) for x in  daily_data)
 
-    
 
-    
+
+

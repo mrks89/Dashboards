@@ -152,12 +152,12 @@ def run_streamlit_app(api_client):
     update_time = datetime.datetime.strptime("8:00", "%H:%M").time()
 
     sensors = {
-        "21820":{"disaggregation":{}, "prev_val": 0, "name":"Mattersburg"},
-        "21189":{"disaggregation":{}, "prev_val": 0, "name":"Eisenstadt"},
-        "22097":{"disaggregation":{}, "prev_val": 0, "name":"Jennersdorf"},
-        "21821":{"disaggregation":{}, "prev_val": 0, "name":"Oberwart"},
-        "21822":{"disaggregation":{}, "prev_val": 0, "name":"Oberpullendorf"},
-        "22096":{"disaggregation":{}, "prev_val": 0, "name":"Güssing"},
+        {"sensor_id":"21820", "name":"Mattersburg"},
+        {"sensor_id":"21189", "name":"Eisenstadt"},
+        {"sensor_id":"22097", "name":"Jennersdorf"},
+        {"sensor_id":"21821", "name":"Oberwart"},
+        {"sensor_id":"21822", "name":"Oberpullendorf"},
+        {"sensor_id":"22096", "name":"Güssing"},
     }
 
     predefined_labels = {
