@@ -151,14 +151,14 @@ def run_streamlit_app(api_client):
 
     update_time = datetime.datetime.strptime("8:00", "%H:%M").time()
 
-    sensors = {
+    sensors = [
         {"sensor_id":"21820", "name":"Mattersburg"},
         {"sensor_id":"21189", "name":"Eisenstadt"},
         {"sensor_id":"22097", "name":"Jennersdorf"},
         {"sensor_id":"21821", "name":"Oberwart"},
         {"sensor_id":"21822", "name":"Oberpullendorf"},
         {"sensor_id":"22096", "name":"Güssing"},
-    }
+    ]
 
     predefined_labels = {
         "air_conditioner": "Klimaanlage",

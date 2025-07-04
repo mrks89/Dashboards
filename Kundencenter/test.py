@@ -389,30 +389,55 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             )
             gauge_max = max(100, gesamt["live_usage"] * 1.2)
             print(f"DEBUG: Gauge max value calculated: {gauge_max}")
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
+            
+            fig = go.Figure()
+            
+            # Add gauge indicator
+            fig.add_trace(go.Indicator(
+                mode="gauge",  # Remove "+number" to hide the number inside the gauge
                 value=gesamt["live_usage"],
-                number={
-                    'font': {'color': '#ffe066', 'size': 36},
-                    'suffix': ' kW',
-                },
                 gauge={
-                    'axis': {'range': [0, max(100, gesamt["live_usage"] * 1.2)], 'tickcolor': '#ffe066', 'tickwidth': 2, 'ticklen': 8, 'tickfont': {'color': '#ffe066'}},
-                    'bar': {'color': '#ffe066', 'thickness': 0.3},
+                    'axis': {
+                        'range': [0, gauge_max], 
+                        'tickcolor': '#ffe066', 
+                        'tickwidth': 2, 
+                        'ticklen': 8, 
+                        'tickfont': {'color': '#ffe066', 'size': 12}
+                    },
+                    'bar': {'color': 'rgba(0,0,0,0)', 'thickness': 0},  # Hide default bar
                     'bgcolor': "#222228",
                     'borderwidth': 0,
                     'steps': [
-                        {'range': [0, max(100, gesamt["live_usage"] * 1.2)], 'color': "#222228"}
+                        {'range': [0, gauge_max * 0.25], 'color': "#28a745"},
+                        {'range': [gauge_max * 0.25, gauge_max * 0.5], 'color': "#28a745"},
+                        {'range': [gauge_max * 0.5, gauge_max * 0.75], 'color': "#fd7e14"},
+                        {'range': [gauge_max * 0.75, gauge_max], 'color': "#dc3545"}
                     ],
                     'threshold': {
-                        'line': {'color': "#ffe066", 'width': 4},
-                        'thickness': 0.75,
+                        'line': {'color': 'rgba(0,0,0,0)', 'width': 0},  # Hide threshold line
+                        'thickness': 0,
                         'value': gesamt["live_usage"]
                     }
                 },
-                domain={'x': [0, 1], 'y': [0, 1]}            ))
-            fig.update_layout(margin=dict(l=0, r=0, t=0, b=0), height=340, paper_bgcolor="#222228")
+                domain={'x': [0, 1], 'y': [0.05, 0.85]}  # Moved down from y: [0.2, 1] to [0.15, 0.95]
+            ))
+            
+            fig.update_layout(
+                margin=dict(l=0, r=0, t=0, b=0), 
+                height=260,  # Reduced height since value is now separate
+                paper_bgcolor="#222228",
+                font={'color': '#ffe066'}
+            )
             st.plotly_chart(fig, use_container_width=True, key=f"gauge_chart_{seconds}")
+            
+            # Add the value in a separate box below the gauge
+            st.markdown(
+                f'<div class="box" style="text-align: center; margin-top: 0px;">'  # Changed from margin-top: 10px to 0px
+                f'<span class="yellow-text" style="font-size: 2rem; font-weight: bold;">{gesamt["live_usage"]:.1f}</span>'
+                f'<span class="gray-text" style="font-size: 1.2rem; margin-left: 8px;">kW</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
         with col3:
             st.markdown(
