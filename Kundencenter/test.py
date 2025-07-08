@@ -4,6 +4,16 @@ import numpy as np
 import time
 from datetime import datetime, timedelta
 from functions import APIClient, get_day_with_max_consumption, get_day_with_min_consumption, get_mean_consumption, get_sum_consumption
+import base64
+
+def get_base64_image(image_path):
+    """Convert image to base64 string for HTML display"""
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except Exception as e:
+        print(f"DEBUG: Error converting image to base64: {e}")
+        return ""
 
 print("DEBUG: Starting application initialization...")
 
@@ -15,13 +25,13 @@ st.markdown("""
         .main {background-color: #222228;}
         .block-container {padding-top: 1.5rem;}
         .dashboard-section {
-            border: 2px solid #ffe066;
+            border: 2px solid #FFCC00;
             border-radius: 24px;
             padding: 18px 24px 24px 24px;
             margin-bottom: 24px;
             background: #18181c;
         }
-        .yellow-text {color: #ffe066;}
+        .yellow-text {color: #FFCC00;}
         .white-text {color: #fff;}
         .gray-text {color: #bbb;}
         .big {font-size: 2.2rem; font-weight: 700;}
@@ -32,10 +42,10 @@ st.markdown("""
         .flex-col {display: flex; flex-direction: column;}
         .gap-1 {gap: 1rem;}
         .gap-2 {gap: 2rem;}
-        .box {background: #222228; border-radius: 12px; padding: 12px 18px; margin-bottom: 10px;}
-        .box-red {background: #222228;}
-        .box-green {background: #222228;}
-        .box-yellow {background: #222228;}
+        .box {background: #222228; border-radius: 12px; padding: 12px 18px; margin-bottom: 10px; border: 1px solid #555555;}
+        .box-red {background: #222228; border: 1px solid #871010;}
+        .box-green {background: #222228; border: 1px solid #278109 }
+        .box-yellow {background: #222228; border: 1px solid #555555;}
         .box-icon {font-size: 1.5rem; margin-right: 10px;}
         .bar-label {font-size: 1.1rem; font-weight: 600;}
     </style>
@@ -366,20 +376,50 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
     
     # Update main dashboard content
     with main_placeholder.container():
-        col1, col2, col3 = st.columns([2.5, 2, 2.5])
+        col1, col2, col3 = st.columns([1, 1, 1])
 
         with col1:
+            # Gesamtverbrauch über gewählten Zeitraum and Vorwoche
             print(f"DEBUG: Rendering column 1 with gesamt data - sum: {gesamt['sum_usage']}, avg: {gesamt['avg_usage']}")
-            st.markdown(f'<div class="box flex-row gap-1"><span class="box-icon yellow-text">⚡</span><div><b>Gesamtverbrauch über gewählten Zeitraum</b><br><span class="yellow-text" style="font-size:1.5rem;">{gesamt["sum_usage"]:.0f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="box flex-row gap-1"><span class="box-icon yellow-text">📅</span><div><b>Täglicher Durchschnitt</b><br><span class="yellow-text" style="font-size:1.5rem;">{gesamt["avg_usage"]:.2f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="box flex-row gap-1" style="height: 15vh; margin-bottom: 10px; display: flex; align-items: center;">'
+                f'<span class="box-icon yellow-text">⚡</span>'
+                f'<div><b>Gesamtverbrauch über gewählten Zeitraum</b><br>'
+                f'<span class="yellow-text" style="font-size: 1.5rem;">{gesamt["sum_usage"]:.0f}</span> '
+                f'<span class="gray-text">kWh</span></div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+            
+            # Dummy diff for now, you can calculate real difference if you fetch last week's data
+            diff_kw = np.random.uniform(-30, 30)
+            absolute_kwh = diff_kw * gesamt["sum_usage"] / 100
+            st.markdown(
+                f'<div class="box flex-row gap-1" style="height: 15vh; display: flex; align-items: center;">'
+                f'<span class="box-icon yellow-text">📊</span>'
+                f'<div><b>Vorwoche</b><br>'
+                f'<span class="yellow-text" style="font-size: 1.5rem;">{absolute_kwh:+.2f} kWh</span> '
+                f'<span class="gray-text">({diff_kw:+.2f}%)</span><br>'
+                f'<span class="gray-text">{gesamt["sum_usage"] + absolute_kwh:.2f} kWh</span></div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        with col2:
+            # Täglicher Durchschnitt, Höchster Verbrauch, Niedrigster Verbrauch
+            st.markdown(f'<div class="box flex-row gap-1" style="height: 10vh; margin-bottom: 10px; display: flex; align-items: center;"><span class="box-icon yellow-text">📅</span><div><b>Täglicher Durchschnitt</b><br><span class="yellow-text" style="font-size:1.5rem;">{gesamt["avg_usage"]:.2f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            
             max_cc = max(ccs, key=lambda x: x["sum_usage"])
             min_cc = min(ccs, key=lambda x: x["sum_usage"])
             print(f"DEBUG: Max CC: {max_cc['name']} ({max_cc['sum_usage']}), Min CC: {min_cc['name']} ({min_cc['sum_usage']})")
-            st.markdown(f'<div class="box box-red flex-row gap-1"><span class="box-icon yellow-text">📈</span><div><b>Höchster Verbrauch</b><br><span class="white-text">{max_cc["name"]}</span> <span class="yellow-text" style="font-size:1.2rem;">{max_cc["sum_usage"]:.1f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="box box-green flex-row gap-1"><span class="box-icon yellow-text">📉</span><div><b>Niedrigster Verbrauch</b><br><span class="white-text">{min_cc["name"]}</span> <span class="yellow-text" style="font-size:1.2rem;">{min_cc["sum_usage"]:.1f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            
+            st.markdown(f'<div class="box box-red flex-row gap-1" style="height: 10vh; margin-bottom: 10px; display: flex; align-items: center;"><span class="box-icon yellow-text">📈</span><div><b>Höchster Verbrauch</b><br><span class="white-text">{max_cc["name"]}</span> <span class="yellow-text" style="font-size:1.2rem;">{max_cc["sum_usage"]:.1f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            
+            st.markdown(f'<div class="box box-green flex-row gap-1" style="height: 10vh; display: flex; align-items: center;"><span class="box-icon yellow-text">📉</span><div><b>Niedrigster Verbrauch</b><br><span class="white-text">{min_cc["name"]}</span> <span class="yellow-text" style="font-size:1.2rem;">{min_cc["sum_usage"]:.1f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
 
-        with col2:
-            print(f"DEBUG: Rendering column 2 with live usage gauge: {gesamt['live_usage']} kW")
+        with col3:
+            # Live indicator and gauge
+            print(f"DEBUG: Rendering column 3 with live usage gauge: {gesamt['live_usage']} kW")
             st.markdown(
                 '<div class="center">'
                 '<span class="yellow-text medium" style="margin-right:20px;">● Live</span>'
@@ -399,10 +439,10 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
                 gauge={
                     'axis': {
                         'range': [0, gauge_max], 
-                        'tickcolor': '#ffe066', 
+                        'tickcolor': '#FFCC00', 
                         'tickwidth': 2, 
                         'ticklen': 8, 
-                        'tickfont': {'color': '#ffe066', 'size': 12}
+                        'tickfont': {'color': '#FFCC00', 'size': 12}
                     },
                     'bar': {'color': 'rgba(0,0,0,0)', 'thickness': 0},  # Hide default bar
                     'bgcolor': "#222228",
@@ -422,112 +462,116 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
                 domain={'x': [0, 1], 'y': [0.05, 0.85]}  # Moved down from y: [0.2, 1] to [0.15, 0.95]
             ))
             
+            # Use viewport height for gauge
+            gauge_height = "22vh"  # Adjust this value as needed
             fig.update_layout(
                 margin=dict(l=0, r=0, t=0, b=0), 
-                height=260,  # Reduced height since value is now separate
+                height=int(0.22 * 1080),  # Fallback for systems that don't support vh in Plotly
                 paper_bgcolor="#222228",
-                font={'color': '#ffe066'}
+                font={'color': '#FFCC00'}
             )
+            
+            # Create a container with border for the gauge
+            #st.markdown('<div style="border: 1px solid #555555; border-radius: 12px; padding: 12px; background: #222228;">', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, key=f"gauge_chart_{seconds}")
+            #st.markdown('</div>', unsafe_allow_html=True)
             
             # Add the value in a separate box below the gauge
             st.markdown(
-                f'<div class="box" style="text-align: center; margin-top: 0px;">'  # Changed from margin-top: 10px to 0px
+                f'<div class="box" style="text-align: center; margin-top: 0px; height: 8vh; display: flex; flex-direction: column; justify-content: center; border: 1px solid #555555;">'
                 f'<span class="yellow-text" style="font-size: 2rem; font-weight: bold;">{gesamt["live_usage"]:.1f}</span>'
                 f'<span class="gray-text" style="font-size: 1.2rem; margin-left: 8px;">kW</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
 
-        with col3:
-            st.markdown(
-                '<div class="center">'
-                '<span class="white-text medium" style="font-size:1.2rem;">Differenz Vorwoche</span>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-            # Dummy diff for now, you can calculate real difference if you fetch last week's data
-            diff_kw = np.random.uniform(-30, 30)
-            st.markdown(
-                f'<div class="box box-red" style="height:340px; display:flex; flex-direction:column; justify-content:center; align-items:center;">'
-                f'<span class="gray-text" style="font-size:1rem; text-align:center;">Vorwoche</span><br>'
-                f'<span class="yellow-text" style="font-size:1.5rem; text-align:center;">{diff_kw:+.2f}%</span><br>'
-                f'<span class="gray-text" style="text-align:center;">{diff_kw * gesamt["sum_usage"] / 100:+.2f} kWh</span>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-
         st.markdown('<div style="height: 48px;"></div>', unsafe_allow_html=True)
 
-        col1, col2 = st.columns([2, 2])
+        # Title above the entire row of 5 squares
+        st.markdown(
+            f'<span class="white-text medium"><span class="box-icon yellow-text">🔄</span>{single_cc["name"]} Detailbericht</span>',
+            unsafe_allow_html=True
+        )
+
+        # Create 5 equal columns: image + 4 data boxes
+        col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
 
         with col1:
-            st.markdown(
-                '<span class="yellow-text medium" style="margin-right:20px;">● Live</span>'
-                '<span class="white-text medium">Kundencenter Verbrauchsübersicht</span>',
-                unsafe_allow_html=True
-            )
-            # Bar chart
-            kc_bars_sorted = sorted(ccs, key=lambda x: -x["sum_usage"])
-            kc_bars_labels = [x["name"] for x in kc_bars_sorted]
-            kc_bars_values = [x["sum_usage"] for x in kc_bars_sorted]
-            print(f"DEBUG: Bar chart data - Labels: {kc_bars_labels}, Values: {kc_bars_values}")
-            fig = go.Figure(go.Bar(
-                y=kc_bars_labels,
-                x=kc_bars_values,
-                orientation='h',
-                marker_color=['#ffe066' if i == 0 else '#e0e0e0' for i in range(len(kc_bars_labels))],
-                text=[f"{v:.1f} kWh" for v in kc_bars_values],
-                textposition='outside'            ))
-            fig.update_layout(
-                xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                yaxis=dict(showgrid=False, zeroline=False, tickfont=dict(color='#fff', size=16)),
-                plot_bgcolor='#222228',
-                paper_bgcolor='#222228',
-                margin=dict(l=0, r=0, t=10, b=0),
-                height=320
-            )
-            st.plotly_chart(fig, use_container_width=True, key=f"bar_chart_{seconds}")
+            # Display image for the current customer center
+            print(f"DEBUG: Displaying image for {single_cc['name']}")
+            image_path = f"{single_cc['name'].lower()}.png"
+            try:
+                # Use HTML to control image size - height matches the boxes
+                st.markdown(
+                    f'<div style="height: 280px; display: flex; justify-content: center; align-items: center;">'
+                    f'<img src="data:image/png;base64,{get_base64_image(image_path)}" '
+                    f'style="height: 280px; width: auto; object-fit: contain; border-radius: 8px;" />'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+                print(f"DEBUG: Successfully loaded image: {image_path}")
+            except Exception as e:
+                print(f"DEBUG: Could not load image {image_path}: {e}")
+                # Fallback: show a placeholder
+                st.markdown(
+                    f'<div class="box" style="height:280px; display:flex; flex-direction:column; justify-content:center; align-items:center;">'
+                    f'<span class="yellow-text" style="font-size:2rem; text-align:center;">{single_cc["name"]}</span><br>'
+                    f'<span class="gray-text" style="text-align:center;">Kundencenter</span>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
 
         with col2:
-            print(f"DEBUG: Rendering detail view for {single_cc['name']} - Sum: {single_cc['sum_usage']}, Avg: {single_cc['avg_usage']}")
-            print(f"DEBUG: Detail view Min/Max - Min: {single_cc['min_usage']}, Max: {single_cc['max_usage']}")
+            # Gesamtverbrauch
             st.markdown(
-                f'<span class="white-text medium"><span class="box-icon yellow-text">🔄</span>{single_cc["name"]} Detailbericht</span>',
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                f'<div class="box flex-row gap-1">'
-                f'<span class="box-icon yellow-text">⚡</span>'
-                f'<div><b>Gesamtverbrauch über gewählten Zeitraum</b><br>'
-                f'<span class="yellow-text" style="font-size:1.5rem;">{single_cc["sum_usage"]:.0f}</span> <span class="gray-text">kWh</span></div>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                f'<div class="box flex-row gap-1">'
-                f'<span class="box-icon yellow-text">📅</span>'
-                f'<div><b>Täglicher Durchschnitt</b><br>'
-                f'<span class="yellow-text" style="font-size:1.5rem;">{single_cc["avg_usage"]:.2f}</span> <span class="gray-text">kWh</span></div>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown(
-                f'<div style="display:flex; gap:10px; margin-bottom:10px;">'
-                f'<div class="box box-red flex-row gap-1" style="flex:1;">'
-                f'<span class="box-icon yellow-text">📈</span>'
-                f'<div><b>Maximalverbrauch</b><br>'
-                f'<span class="white-text">{single_cc["max_usage"]["date"]}</span><br>'
-                f'<span class="yellow-text" style="font-size:1.2rem;">{single_cc["max_usage"]["consumption"]:.2f}</span> <span class="gray-text">kWh</span>'
-                f'</div></div>'
-                f'<div class="box box-green flex-row gap-1" style="flex:1;">'
-                f'<span class="box-icon yellow-text">📉</span>'
-                f'<div><b>Minimalverbrauch</b><br>'
-                f'<span class="white-text">{single_cc["min_usage"]["date"]}</span><br>'
-                f'<span class="yellow-text" style="font-size:1.2rem;">{single_cc["min_usage"]["consumption"]:.2f}</span> <span class="gray-text">kWh</span>'
-                f'</div></div>'
+                f'<div class="box flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
+                f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">⚡</span>'
+                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 8px;">Gesamtverbrauch</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.3rem; font-weight: bold;">{single_cc["sum_usage"]:.0f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
-            )    
+            )
+
+        with col3:
+            # Täglicher Durchschnitt
+            st.markdown(
+                f'<div class="box flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
+                f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">📅</span>'
+                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 8px;">Täglicher Durchschnitt</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.3rem; font-weight: bold;">{single_cc["avg_usage"]:.2f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        with col4:
+            # Maximalverbrauch
+            st.markdown(
+                f'<div class="box box-red flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
+                f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">📈</span>'
+                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 4px;">Maximalverbrauch</div>'
+                f'<div style="font-size: 0.8rem; color: white, margin-bottom: 4px;">{single_cc["max_usage"]["date"]}</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.2rem; font-weight: bold;">{single_cc["max_usage"]["consumption"]:.2f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        with col5:
+            # Minimalverbrauch
+            st.markdown(
+                f'<div class="box box-green flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
+                f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">📉</span>'
+                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 4px;">Minimalverbrauch</div>'
+                f'<div style="font-size: 0.8rem; color: white, margin-bottom: 4px;">{single_cc["min_usage"]["date"]}</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.2rem; font-weight: bold;">{single_cc["min_usage"]["consumption"]:.2f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        print(f"DEBUG: Rendering detail view for {single_cc['name']} - Sum: {single_cc['sum_usage']}, Avg: {single_cc['avg_usage']}")
+        print(f"DEBUG: Detail view Min/Max - Min: {single_cc['min_usage']}, Max: {single_cc['max_usage']}")
     # Sleep for 3 seconds before next update (faster refresh for live data)
     time.sleep(3)
