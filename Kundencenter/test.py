@@ -427,63 +427,58 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
                 '</div>',
                 unsafe_allow_html=True
             )
-            gauge_max = max(100, gesamt["live_usage"] * 1.2)
+            
+            # Calculate gauge max value
+            gauge_max = max(100, gesamt["live_usage"] * 1.3)
             print(f"DEBUG: Gauge max value calculated: {gauge_max}")
             
             fig = go.Figure()
             
-            # Add gauge indicator
+            # Add gauge indicator with needle
             fig.add_trace(go.Indicator(
-                mode="gauge",  # Remove "+number" to hide the number inside the gauge
+                mode="gauge+number",
                 value=gesamt["live_usage"],
+                number={'suffix': ' kW', 'font': {'size': 20, 'color': 'white'}},
                 gauge={
                     'axis': {
                         'range': [0, gauge_max], 
-                        'tickcolor': '#FFCC00', 
+                        'tickcolor': 'white', 
                         'tickwidth': 2, 
-                        'ticklen': 8, 
-                        'tickfont': {'color': '#FFCC00', 'size': 12}
+                        'ticklen': 10,
+                        'tickfont': {'color': 'white', 'size': 12, 'family': 'Arial'},
+                        'showticklabels': True,
+                        'tickmode': 'linear',
+                        'tick0': 0,
+                        'dtick': gauge_max / 4
                     },
-                    'bar': {'color': 'rgba(0,0,0,0)', 'thickness': 0},  # Hide default bar
-                    'bgcolor': "#222228",
+                    'bar': {'color': "rgba(0,0,0,0)"},  # Hide the bar
+                    'bgcolor': "rgba(0,0,0,0)",
                     'borderwidth': 0,
                     'steps': [
-                        {'range': [0, gauge_max * 0.25], 'color': "#28a745"},
-                        {'range': [gauge_max * 0.25, gauge_max * 0.5], 'color': "#28a745"},
-                        {'range': [gauge_max * 0.5, gauge_max * 0.75], 'color': "#fd7e14"},
-                        {'range': [gauge_max * 0.75, gauge_max], 'color': "#dc3545"}
+                        {'range': [gauge_max * 0.0, gauge_max * 0.5], 'color': "#0EB313", 'thickness': 1.0},
+
+                        {'range': [gauge_max * 0.5, gauge_max * 0.75], 'color': "#FF9800", 'thickness': 1.0},
+                        {'range': [gauge_max * 0.75, gauge_max], 'color': "#F44336", 'thickness': 1.0}
                     ],
                     'threshold': {
-                        'line': {'color': 'rgba(0,0,0,0)', 'width': 0},  # Hide threshold line
-                        'thickness': 0,
+                        'line': {'color': 'white', 'width': 6},
+                        'thickness': 1.0,
                         'value': gesamt["live_usage"]
                     }
                 },
-                domain={'x': [0, 1], 'y': [0.05, 0.85]}  # Moved down from y: [0.2, 1] to [0.15, 0.95]
+                domain={'x': [0, 1], 'y': [0, 1]}
             ))
             
-            # Use viewport height for gauge
-            gauge_height = "22vh"  # Adjust this value as needed
             fig.update_layout(
-                margin=dict(l=0, r=0, t=0, b=0), 
-                height=int(0.22 * 1080),  # Fallback for systems that don't support vh in Plotly
-                paper_bgcolor="#222228",
-                font={'color': '#FFCC00'}
+                margin=dict(l=20, r=20, t=20, b=20), 
+                height=300,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font={'color': 'white', 'size': 12, 'family': 'Arial'},
+                showlegend=False
             )
             
-            # Create a container with border for the gauge
-            #st.markdown('<div style="border: 1px solid #555555; border-radius: 12px; padding: 12px; background: #222228;">', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True, key=f"gauge_chart_{seconds}")
-            #st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Add the value in a separate box below the gauge
-            st.markdown(
-                f'<div class="box" style="text-align: center; margin-top: 0px; height: 8vh; display: flex; flex-direction: column; justify-content: center; border: 1px solid #555555;">'
-                f'<span class="yellow-text" style="font-size: 2rem; font-weight: bold;">{gesamt["live_usage"]:.1f}</span>'
-                f'<span class="gray-text" style="font-size: 1.2rem; margin-left: 8px;">kW</span>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
 
         st.markdown('<div style="height: 48px;"></div>', unsafe_allow_html=True)
 
