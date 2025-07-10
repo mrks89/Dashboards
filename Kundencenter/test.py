@@ -358,7 +358,7 @@ header_col1, header_col2 = st.columns([1, 4])
 with header_col1:
     # Display logo
     try:
-        logo_base64 = get_base64_image("logo.png")
+        logo_base64 = get_base64_image("img/logo.png")
         st.markdown(
             f'<div style="display: flex; align-items: center; height: 100%;">'
             f'<img src="data:image/png;base64,{logo_base64}" '
@@ -366,9 +366,9 @@ with header_col1:
             f'</div>',
             unsafe_allow_html=True
         )
-        print("DEBUG: Successfully loaded logo.png")
+        print("DEBUG: Successfully loaded img/logo.png")
     except Exception as e:
-        print(f"DEBUG: Could not load logo.png: {e}")
+        print(f"DEBUG: Could not load img/logo.png: {e}")
         # Fallback: show a placeholder
         st.markdown(
             f'<div style="height: 4.4rem; display: flex; align-items: center; justify-content: center; border: 2px dashed #FFCC00; border-radius: 8px;">'
@@ -623,7 +623,7 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
         with col1:
             # Display image for the current customer center
             print(f"DEBUG: Displaying image for {single_cc['name']}")
-            image_path = f"{single_cc['name'].lower()}.png"
+            image_path = f"img/{single_cc['name'].lower()}.png"
             try:
                 # Use HTML to control image size - height matches the boxes
                 st.markdown(
