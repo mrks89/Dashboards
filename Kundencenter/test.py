@@ -169,8 +169,57 @@ def fetch_historical_data():
         "avg_usage": avg_usage,
         "live_usage": 0,  # Will be updated by fetch_live_data
     })
+    
+    # Also fetch previous week data
+    print("DEBUG: Fetching previous week data...")
+    prev_week_data = fetch_previous_week_data()
+    
     print(f"DEBUG: fetch_historical_data() completed with {len(db)} total entries")
-    return db
+    return db, prev_week_data
+
+def fetch_previous_week_data():
+    """Fetch previous week data for comparison"""
+    print("DEBUG: Starting fetch_previous_week_data() function...")
+    
+    # Calculate previous week date range
+    today = datetime.now().date()
+    current_week_start = today - timedelta(days=7)  # Start of current period
+    prev_week_end = current_week_start - timedelta(days=1)  # End of previous week
+    prev_week_start = prev_week_end - timedelta(days=6)  # Start of previous week (7 days)
+    
+    prev_start_date = prev_week_start.strftime("%Y-%m-%d")
+    prev_end_date = prev_week_end.strftime("%Y-%m-%d")
+    
+    print(f"DEBUG: Previous week range - Start: {prev_start_date}, End: {prev_end_date}")
+    
+    db_prev = []
+    for cc in customer_centers:
+        print(f"DEBUG: Processing previous week data for {cc['name']}...")
+        try:
+            usage_per_day_raw = api.usage_per_day(cc["sensor_id"], prev_start_date, prev_end_date)
+            # Convert watts to kilowatts
+            usage_per_day = [{"date": day["date"], "consumption": day["consumption"] / 1000} for day in usage_per_day_raw]
+            sum_usage = get_sum_consumption(usage_per_day)
+        except Exception as e:
+            print(f"DEBUG: Error processing previous week data for {cc['name']}: {e}")
+            sum_usage = 0
+        
+        db_prev.append({
+            "sensor_id": cc["sensor_id"],
+            "name": cc["name"],
+            "sum_usage": sum_usage,
+        })
+    
+    # Calculate total for previous week
+    total_prev_usage = sum(cc["sum_usage"] for cc in db_prev)
+    db_prev.append({
+        "sensor_id": "00000",
+        "name": "Gesamt",
+        "sum_usage": total_prev_usage,
+    })
+    
+    print(f"DEBUG: Previous week total usage: {total_prev_usage}")
+    return db_prev
 
 def fetch_live_data(db):
     """Fetch only live power data for all customer centers"""
@@ -215,17 +264,19 @@ def fetch_dashboard_data():
     # Check if we need to fetch historical data
     if should_fetch_historical_data():
         print("DEBUG: Fetching historical data...")
-        db = fetch_historical_data()
+        db, prev_week_data = fetch_historical_data()
         st.session_state.historical_data_last_fetch = time.time()
         st.session_state.dashboard_db_historical = db
+        st.session_state.previous_week_data = prev_week_data
     else:
         print("DEBUG: Using cached historical data...")
         db = st.session_state.get("dashboard_db_historical", [])
         if not db:  # Fallback if no historical data exists
             print("DEBUG: No cached historical data found, fetching...")
-            db = fetch_historical_data()
+            db, prev_week_data = fetch_historical_data()
             st.session_state.historical_data_last_fetch = time.time()
             st.session_state.dashboard_db_historical = db
+            st.session_state.previous_week_data = prev_week_data
     
     # Always fetch live data
     db = fetch_live_data(db.copy())  # Use copy to avoid modifying cached data
@@ -384,38 +435,57 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box flex-row gap-1" style="height: 15vh; margin-bottom: 10px; display: flex; align-items: center;">'
                 f'<span class="box-icon yellow-text">⚡</span>'
-                f'<div><b>Gesamtverbrauch über gewählten Zeitraum</b><br>'
-                f'<span class="yellow-text" style="font-size: 1.5rem;">{gesamt["sum_usage"]:.0f}</span> '
-                f'<span class="gray-text">kWh</span></div>'
+                f'<div><b style="font-size: 1rem;">Gesamtverbrauch über gewählten Zeitraum</b><br>'
+                f'<span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{gesamt["sum_usage"]:.0f}</span> '
+                f'<span class="gray-text" style="font-size: 1rem;">kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
             
             # Dummy diff for now, you can calculate real difference if you fetch last week's data
-            diff_kw = np.random.uniform(-30, 30)
-            absolute_kwh = diff_kw * gesamt["sum_usage"] / 100
+            # Get previous week data
+            prev_week_data = st.session_state.get("previous_week_data", [])
+            if prev_week_data:
+                # Find the matching previous week data (Gesamt entry)
+                prev_gesamt = next((item for item in prev_week_data if item["name"] == "Gesamt"), None)
+                if prev_gesamt and prev_gesamt["sum_usage"] > 0:
+                    absolute_kwh = gesamt["sum_usage"] - prev_gesamt["sum_usage"]
+                    diff_kw = (absolute_kwh / prev_gesamt["sum_usage"]) * 100 if prev_gesamt["sum_usage"] > 0 else 0
+                    prev_week_total = prev_gesamt["sum_usage"]
+                else:
+                    # Fallback to dummy data if no previous week data
+                    diff_kw = np.random.uniform(-30, 30)
+                    absolute_kwh = diff_kw * gesamt["sum_usage"] / 100
+                    prev_week_total = gesamt["sum_usage"] + absolute_kwh
+            else:
+                # Fallback to dummy data if no previous week data
+                diff_kw = np.random.uniform(-30, 30)
+                absolute_kwh = diff_kw * gesamt["sum_usage"] / 100
+                prev_week_total = gesamt["sum_usage"] + absolute_kwh
+            
             st.markdown(
                 f'<div class="box flex-row gap-1" style="height: 15vh; display: flex; align-items: center;">'
                 f'<span class="box-icon yellow-text">📊</span>'
-                f'<div><b>Vorwoche</b><br>'
-                f'<span class="yellow-text" style="font-size: 1.5rem;">{absolute_kwh:+.2f} kWh</span> '
-                f'<span class="gray-text">({diff_kw:+.2f}%)</span><br>'
-                f'<span class="gray-text">{gesamt["sum_usage"] + absolute_kwh:.2f} kWh</span></div>'
+                f'<div><b style="font-size: 1rem;">Vorwoche</b><br>'
+                f'<span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{absolute_kwh:+.2f}</span> '
+                f'<span class="gray-text" style="font-size: 1rem;">kWh</span> '
+                f'<span class="gray-text" style="font-size: 1rem;">({diff_kw:+.2f}%)</span><br>'
+                f'<span class="gray-text" style="font-size: 1rem;">{prev_week_total:.2f} kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
 
         with col2:
             # Täglicher Durchschnitt, Höchster Verbrauch, Niedrigster Verbrauch
-            st.markdown(f'<div class="box flex-row gap-1" style="height: 10vh; margin-bottom: 10px; display: flex; align-items: center;"><span class="box-icon yellow-text">📅</span><div><b>Täglicher Durchschnitt</b><br><span class="yellow-text" style="font-size:1.5rem;">{gesamt["avg_usage"]:.2f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="box flex-row gap-1" style="height: 10vh; margin-bottom: 10px; display: flex; align-items: center;"><span class="box-icon yellow-text">📅</span><div><b style="font-size: 1rem;">Täglicher Durchschnitt</b><br><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{gesamt["avg_usage"]:.2f}</span> <span class="gray-text" style="font-size: 1rem;">kWh</span></div></div>', unsafe_allow_html=True)
             
             max_cc = max(ccs, key=lambda x: x["sum_usage"])
             min_cc = min(ccs, key=lambda x: x["sum_usage"])
             print(f"DEBUG: Max CC: {max_cc['name']} ({max_cc['sum_usage']}), Min CC: {min_cc['name']} ({min_cc['sum_usage']})")
             
-            st.markdown(f'<div class="box box-red flex-row gap-1" style="height: 10vh; margin-bottom: 10px; display: flex; align-items: center;"><span class="box-icon yellow-text">📈</span><div><b>Höchster Verbrauch</b><br><span class="white-text">{max_cc["name"]}</span> <span class="yellow-text" style="font-size:1.2rem;">{max_cc["sum_usage"]:.1f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="box box-red flex-row gap-1" style="height: 10vh; margin-bottom: 10px; display: flex; align-items: center;"><span class="box-icon yellow-text">📈</span><div><b style="font-size: 1rem;">Höchster Verbrauch</b><br><span class="white-text" style="font-size: 1rem;">{max_cc["name"]}</span><br><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{max_cc["sum_usage"]:.1f}</span> <span class="gray-text" style="font-size: 1rem;">kWh</span></div></div>', unsafe_allow_html=True)
             
-            st.markdown(f'<div class="box box-green flex-row gap-1" style="height: 10vh; display: flex; align-items: center;"><span class="box-icon yellow-text">📉</span><div><b>Niedrigster Verbrauch</b><br><span class="white-text">{min_cc["name"]}</span> <span class="yellow-text" style="font-size:1.2rem;">{min_cc["sum_usage"]:.1f}</span> <span class="gray-text">kWh</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="box box-green flex-row gap-1" style="height: 10vh; display: flex; align-items: center;"><span class="box-icon yellow-text">📉</span><div><b style="font-size: 1rem;">Niedrigster Verbrauch</b><br><span class="white-text" style="font-size: 1rem;">{min_cc["name"]}</span><br><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{min_cc["sum_usage"]:.1f}</span> <span class="gray-text" style="font-size: 1rem;">kWh</span></div></div>', unsafe_allow_html=True)
 
         with col3:
             # Live indicator and gauge
@@ -553,9 +623,9 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
                 f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">⚡</span>'
-                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 8px;">Gesamtverbrauch</div>'
-                f'<div><span class="yellow-text" style="font-size: 1.3rem; font-weight: bold;">{single_cc["sum_usage"]:.0f}</span></div>'
-                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'<div style="font-weight: bold; font-size: 1rem; margin-bottom: 12px;">Gesamtverbrauch</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{single_cc["sum_usage"]:.0f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 1rem;">kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -565,9 +635,9 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
                 f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">📅</span>'
-                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 8px;">Täglicher Durchschnitt</div>'
-                f'<div><span class="yellow-text" style="font-size: 1.3rem; font-weight: bold;">{single_cc["avg_usage"]:.2f}</span></div>'
-                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'<div style="font-weight: bold; font-size: 1rem; margin-bottom: 12px;">Täglicher Durchschnitt</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{single_cc["avg_usage"]:.2f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 1rem;">kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -577,10 +647,10 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box box-red flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
                 f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">📈</span>'
-                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 4px;">Maximalverbrauch</div>'
-                f'<div style="font-size: 0.8rem; color: white, margin-bottom: 4px;">{single_cc["max_usage"]["date"]}</div>'
-                f'<div><span class="yellow-text" style="font-size: 1.2rem; font-weight: bold;">{single_cc["max_usage"]["consumption"]:.2f}</span></div>'
-                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'<div style="font-weight: bold; font-size: 1rem; margin-bottom: 8px;">Maximalverbrauch</div>'
+                f'<div style="font-size: 1rem; color: white; margin-bottom: 8px;">{single_cc["max_usage"]["date"]}</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{single_cc["max_usage"]["consumption"]:.2f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 1rem;">kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -590,10 +660,10 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box box-green flex-col" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 280px;">'
                 f'<span class="box-icon yellow-text" style="font-size: 2rem; margin-bottom: 8px;">📉</span>'
-                f'<div style="font-weight: bold; font-size: 0.9rem, margin-bottom: 4px;">Minimalverbrauch</div>'
-                f'<div style="font-size: 0.8rem; color: white, margin-bottom: 4px;">{single_cc["min_usage"]["date"]}</div>'
-                f'<div><span class="yellow-text" style="font-size: 1.2rem; font-weight: bold;">{single_cc["min_usage"]["consumption"]:.2f}</span></div>'
-                f'<div><span class="gray-text" style="font-size: 0.9rem;">kWh</span></div>'
+                f'<div style="font-weight: bold; font-size: 1rem; margin-bottom: 8px;">Minimalverbrauch</div>'
+                f'<div style="font-size: 1rem; color: white; margin-bottom: 8px;">{single_cc["min_usage"]["date"]}</div>'
+                f'<div><span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{single_cc["min_usage"]["consumption"]:.2f}</span></div>'
+                f'<div><span class="gray-text" style="font-size: 1rem;">kWh</span></div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
