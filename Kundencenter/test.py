@@ -434,6 +434,43 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             
             fig = go.Figure()
             
+            # Create fine-grained color steps for gradual transition
+            num_steps = 20  # Number of color steps for smooth transition
+            steps = []
+            
+            for i in range(num_steps):
+                start_range = (gauge_max / num_steps) * i
+                end_range = (gauge_max / num_steps) * (i + 1)
+                
+                # Calculate progress from 0 to 1
+                progress = i / (num_steps - 1)
+                
+                if progress <= 0.5:
+                    # Green to Yellow transition (first half)
+                    # Green: #0EB313, Yellow: #FFFF00
+                    red = int(14 + (255 - 14) * (progress * 2))
+                    green = int(179 + (255 - 179) * (progress * 2))
+                    blue = int(19 * (1 - progress * 2))
+                else:
+                    # Yellow to Red transition (second half)
+                    # Yellow: #FFFF00, Red: #F44336
+                    red = int(255 + (244 - 255) * ((progress - 0.5) * 2))
+                    green = int(255 + (67 - 255) * ((progress - 0.5) * 2))
+                    blue = int(0 + (54 - 0) * ((progress - 0.5) * 2))
+                
+                # Ensure values are within valid range
+                red = max(0, min(255, red))
+                green = max(0, min(255, green))
+                blue = max(0, min(255, blue))
+                
+                color = f"rgb({red},{green},{blue})"
+                
+                steps.append({
+                    'range': [start_range, end_range], 
+                    'color': color, 
+                    'thickness': 0.2
+                })
+            
             # Add gauge indicator with needle
             fig.add_trace(go.Indicator(
                 mode="gauge+number",
@@ -451,27 +488,22 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
                         'tick0': 0,
                         'dtick': gauge_max / 4
                     },
-                    'bar': {'color': "rgba(0,0,0,0)"},  # Hide the bar
+                    'bar': {'color': "rgba(0,0,0,0)", 'line': {'color':"rgba(0,0,0,0)" }},  # Hide the bar
                     'bgcolor': "rgba(0,0,0,0)",
                     'borderwidth': 0,
-                    'steps': [
-                        {'range': [gauge_max * 0.0, gauge_max * 0.5], 'color': "#0EB313", 'thickness': 1.0},
-
-                        {'range': [gauge_max * 0.5, gauge_max * 0.75], 'color': "#FF9800", 'thickness': 1.0},
-                        {'range': [gauge_max * 0.75, gauge_max], 'color': "#F44336", 'thickness': 1.0}
-                    ],
+                    'steps': steps,
                     'threshold': {
                         'line': {'color': 'white', 'width': 6},
                         'thickness': 1.0,
                         'value': gesamt["live_usage"]
                     }
                 },
-                domain={'x': [0, 1], 'y': [0, 1]}
+                domain={'x': [0, 1], 'y': [0, 0.8]}  # Changed from [0, 1] to [0, 0.8] to move gauge down
             ))
             
             fig.update_layout(
-                margin=dict(l=20, r=20, t=20, b=20), 
-                height=300,
+                margin=dict(l=20, r=20, t=40, b=20),  # Increased top margin from 20 to 40
+                height=220,  # Changed from 300 to 150
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 font={'color': 'white', 'size': 12, 'family': 'Arial'},
