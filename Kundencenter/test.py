@@ -352,11 +352,38 @@ if start_week == end_week and start_year == end_year:
 else:
     week_display = f"KW {start_week:02d}/{start_year} - KW {end_week:02d}/{end_year}"
 
-st.markdown(
-    f'<span class="yellow-text big">Gesamtübersicht Kundencenter Burgenland Energie</span> '
-    f'<span class="gray-text" style="font-size:1.2rem;">({start_date} - {end_date}, {week_display})</span>',
-    unsafe_allow_html=True
-)
+# Create header with logo and title
+header_col1, header_col2 = st.columns([1, 4])
+
+with header_col1:
+    # Display logo
+    try:
+        logo_base64 = get_base64_image("logo.png")
+        st.markdown(
+            f'<div style="display: flex; align-items: center; height: 100%;">'
+            f'<img src="data:image/png;base64,{logo_base64}" '
+            f'style="height: 4.4rem; width: auto; object-fit: contain;" />'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        print("DEBUG: Successfully loaded logo.png")
+    except Exception as e:
+        print(f"DEBUG: Could not load logo.png: {e}")
+        # Fallback: show a placeholder
+        st.markdown(
+            f'<div style="height: 4.4rem; display: flex; align-items: center; justify-content: center; border: 2px dashed #FFCC00; border-radius: 8px;">'
+            f'<span class="yellow-text" style="font-size: 1rem;">LOGO</span>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+with header_col2:
+    st.markdown(
+        f'<span class="yellow-text big">Gesamtübersicht Kundencenter Burgenland Energie</span> '
+        f'<span class="gray-text" style="font-size:1.2rem;">(letzten 7 Tage)</span>',
+        unsafe_allow_html=True
+    )
+
 st.markdown('<br>', unsafe_allow_html=True)
 
 # Create placeholders for real-time updates
@@ -435,7 +462,7 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box flex-row gap-1" style="height: 15vh; margin-bottom: 10px; display: flex; align-items: center;">'
                 f'<span class="box-icon yellow-text">⚡</span>'
-                f'<div><b style="font-size: 1rem;">Gesamtverbrauch über gewählten Zeitraum</b><br>'
+                f'<div><b style="font-size: 1rem;">Gesamtverbrauch </b><br>'
                 f'<span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{gesamt["sum_usage"]:.0f}</span> '
                 f'<span class="gray-text" style="font-size: 1rem;">kWh</span></div>'
                 f'</div>',
@@ -466,7 +493,7 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
             st.markdown(
                 f'<div class="box flex-row gap-1" style="height: 15vh; display: flex; align-items: center;">'
                 f'<span class="box-icon yellow-text">📊</span>'
-                f'<div><b style="font-size: 1rem;">Vorwoche</b><br>'
+                f'<div><b style="font-size: 1rem;">Gesamtverbrauch Vorperiode</b><br>'
                 f'<span class="yellow-text" style="font-size: 1.5rem; font-weight: bold;">{absolute_kwh:+.2f}</span> '
                 f'<span class="gray-text" style="font-size: 1rem;">kWh</span> '
                 f'<span class="gray-text" style="font-size: 1rem;">({diff_kw:+.2f}%)</span><br>'
