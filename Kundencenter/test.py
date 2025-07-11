@@ -370,7 +370,7 @@ header_col1, header_col2 = st.columns([1, 4])
 with header_col1:
     # Display logo
     try:
-        logo_base64 = get_base64_image("img/logo.png")
+        logo_base64 = get_base64_image("Kundencenter/img/logo.png")
         st.markdown(
             f'<div style="display: flex; align-items: center; height: 100%;">'
             f'<img src="data:image/png;base64,{logo_base64}" '
@@ -635,7 +635,7 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
         with col1:
             # Display image for the current customer center
             print(f"DEBUG: Displaying image for {single_cc['name']}")
-            image_path = f"img/{single_cc['name'].lower()}.png"  # Remove the "./" prefix
+            image_path = f"Kundencenter/img/{single_cc['name'].lower()}.png"  # Remove the "./" prefix
             try:
                 # Use HTML to control image size - height matches the boxes
                 st.markdown(
