@@ -623,7 +623,7 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
         with col1:
             # Display image for the current customer center
             print(f"DEBUG: Displaying image for {single_cc['name']}")
-            image_path = f"img/{single_cc['name'].lower()}.png"
+            image_path = f"./img/{single_cc['name'].lower()}.png"
             try:
                 # Use HTML to control image size - height matches the boxes
                 st.markdown(
