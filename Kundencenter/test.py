@@ -8,9 +8,21 @@ import base64
 
 def get_base64_image(image_path):
     """Convert image to base64 string for HTML display"""
+    import os
     try:
+        # Check if file exists
+        if not os.path.exists(image_path):
+            print(f"DEBUG: Image file does not exist: {image_path}")
+            print(f"DEBUG: Current working directory: {os.getcwd()}")
+            print(f"DEBUG: Files in current directory: {os.listdir('.')}")
+            if os.path.exists('img'):
+                print(f"DEBUG: Files in img directory: {os.listdir('img')}")
+            return ""
+        
         with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
+            base64_string = base64.b64encode(img_file.read()).decode()
+            print(f"DEBUG: Successfully converted {image_path} to base64 (length: {len(base64_string)})")
+            return base64_string
     except Exception as e:
         print(f"DEBUG: Error converting image to base64: {e}")
         return ""
@@ -623,7 +635,7 @@ for seconds in range(3600):  # Run for 1 hour (3600 seconds)
         with col1:
             # Display image for the current customer center
             print(f"DEBUG: Displaying image for {single_cc['name']}")
-            image_path = f"./img/{single_cc['name'].lower()}.png"
+            image_path = f"img/{single_cc['name'].lower()}.png"  # Remove the "./" prefix
             try:
                 # Use HTML to control image size - height matches the boxes
                 st.markdown(
